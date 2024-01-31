@@ -304,11 +304,11 @@ export async function getLiteClient(_configUrl): Promise<LiteClient> {
 
       const liteServers = [
         {
-          ip: 1608101903,
-          port: 30230,
+          ip: 86202810,
+          port: 44177,
           id: {
             "@type": "pub.ed25519",
-            key: "eGx3ACkKhiRkMMH5asaHbCVh+oqVVgciAdfMeh4eddo=",
+            key: "xeg2n86iUxSA2RYZ7vaYu8T+0Q6SW2MQOL7jGWw0PNM=",
           },
         },
       ]; //data.liteservers;
