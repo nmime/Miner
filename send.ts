@@ -208,7 +208,6 @@ async function main() {
     )} ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
     try {
       const output = execSync(command, { encoding: "utf-8", stdio: "pipe" }); // the default is 'buffer'
-      console.log(output, "output", command);
     } catch (e) {
       console.error(e);
     }
