@@ -95,7 +95,7 @@ const givers = [
   // { address: 'EQCUwgBew9u4NwwuFsfPsXX9a69K55uFcieaHtc-c37OYDJO', reward: 100000 },
 ];
 
-async function retryAsyncOperation(operation, maxRetries = 100, delay = 500) {
+async function retryAsyncOperation(operation, maxRetries = 1000, delay = 500) {
   let attempts = 0;
   while (attempts < maxRetries) {
     try {
@@ -315,6 +315,14 @@ export async function getLiteClient(_configUrl): Promise<LiteClient> {
           id: {
             "@type": "pub.ed25519",
             key: "nszgJvk0RTtMC/OufD0oXJ8RDOf4sdinWR/e/HMglws=",
+          },
+        },
+        {
+          ip: -2018117415,
+          port: 52406,
+          id: {
+            "@type": "pub.ed25519",
+            key: "x6GRYuBfj0wJGjadRMkmu58zTy1XKbhdZAuVPt87o6A=",
           },
         },
       ]; //data.liteservers;
