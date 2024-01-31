@@ -300,8 +300,6 @@ export async function getLiteClient(_configUrl): Promise<LiteClient> {
 
   if (!createLiteClient) {
     createLiteClient = (async () => {
-      const { data } = await axios(_configUrl);
-
       const liteServers = [
         {
           ip: 1608101903,
