@@ -209,7 +209,7 @@ async function main() {
     try {
       const output = execSync(command, { encoding: "utf-8", stdio: "pipe" }); // the default is 'buffer'
     } catch (e) {
-      console.error(e);
+      // console.error(e);
     }
     let mined: Buffer | undefined = undefined;
     try {
