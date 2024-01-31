@@ -5,6 +5,8 @@ import {
   internal,
   parseTuple,
   toNano,
+  BitReader,
+  BitString,
 } from "@ton/core";
 import {
   getSecureRandomBytes,
@@ -114,17 +116,36 @@ let lc: LiteClient | undefined = undefined;
 let createLiteClient: Promise<void>;
 
 let bestGiver: { address: string; coins: number } = { address: "", coins: 0 };
-async function updateBestGivers(liteClient: LiteClient) {
+async function updateBestGivers(liteClient: LiteClient, myAddress: Address) {
   const lastInfo = await retryAsyncOperation(() =>
     liteClient.getMasterchainInfo()
   );
 
   let giversWithCoinsPerHash: { address: string; coins: number }[] = [];
 
-  await Promise.all(
-    givers.map(async (giver) => {
-      if (!giver) return;
+  const allowShards = false;
 
+  const whitelistGivers = allowShards
+    ? [...givers]
+    : givers.filter((giver) => {
+        const shardMaxDepth = 1;
+        const giverAddress = Address.parse(giver.address);
+        const myShard = new BitReader(
+          new BitString(myAddress.hash, 0, 1024)
+        ).loadUint(shardMaxDepth);
+        const giverShard = new BitReader(
+          new BitString(giverAddress.hash, 0, 1024)
+        ).loadUint(shardMaxDepth);
+
+        if (myShard === giverShard) {
+          return true;
+        }
+
+        return false;
+      });
+
+  await Promise.all(
+    whitelistGivers.map(async (giver) => {
       const powInfo = await liteClient.runMethod(
         Address.parse(giver.address),
         "get_pow_params",
@@ -171,10 +192,10 @@ async function main() {
   });
   const opened = liteClient.open(wallet);
 
-  await updateBestGivers(liteClient);
+  await updateBestGivers(liteClient, wallet.address);
 
   setInterval(() => {
-    updateBestGivers(liteClient);
+    updateBestGivers(liteClient, wallet.address);
   }, 1000);
 
   while (go) {

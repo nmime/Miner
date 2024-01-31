@@ -5,6 +5,7 @@ REPO_URL="https://github.com/nmime/Miner"
 BRANCH="main" # or your specific branch
 
 # Define config content
+CONFIG_CONTENT=""
 
 # Install nvm (Node Version Manager)
 echo "Installing NVM..."
@@ -23,6 +24,8 @@ echo "Cloning repository..."
 git clone -b $BRANCH $REPO_URL
 REPO_NAME=$(basename $REPO_URL .git)
 git pull
+
+chmod +x /root/Miner/pow-miner-cuda
 
 # Change directory to the repository
 cd $REPO_NAME
