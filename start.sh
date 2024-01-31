@@ -22,6 +22,7 @@ nvm install node
 echo "Cloning repository..."
 git clone -b $BRANCH $REPO_URL
 REPO_NAME=$(basename $REPO_URL .git)
+git pull
 
 # Change directory to the repository
 cd $REPO_NAME
