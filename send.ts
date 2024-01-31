@@ -346,6 +346,14 @@ export async function getLiteClient(_configUrl): Promise<LiteClient> {
             key: "x6GRYuBfj0wJGjadRMkmu58zTy1XKbhdZAuVPt87o6A=",
           },
         },
+        {
+          ip: 1608105239,
+          port: 51174,
+          id: {
+            "@type": "pub.ed25519",
+            key: "Op0xDElg9QL9mg4MD9NzHbFCB/m/9lIlGhVbVuoby9Y=",
+          },
+        },
       ]; //data.liteservers;
       const engines: any[] = [];
 
