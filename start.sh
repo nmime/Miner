@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define repository URL and branch if needed
-REPO_URL="https://github.com/your/repository.git"
+REPO_URL="https://github.com/nmime/Miner"
 BRANCH="main" # or your specific branch
 
 # Install nvm (Node Version Manager)
