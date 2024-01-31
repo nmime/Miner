@@ -200,7 +200,7 @@ async function main() {
 
     const randomName = (await getSecureRandomBytes(8)).toString("hex") + ".boc";
     const path = `bocs/${randomName}`;
-    const command = `./root/Miner/pow-miner-cuda -g 0 -F 256 -t 5 ${wallet.address.toString(
+    const command = `/root/Miner/pow-miner-cuda -g 0 -F 256 -t 5 ${wallet.address.toString(
       {
         urlSafe: true,
         bounceable: true,
