@@ -111,7 +111,7 @@ async function updateBestGivers(liteClient: LiteClient, myAddress: Address) {
 
   const allowShards = false;
 
-  const whitelistGivers = allowShards
+  let whitelistGivers = allowShards
     ? [...givers]
     : givers.filter((giver) => {
         const shardMaxDepth = 1;
@@ -129,6 +129,8 @@ async function updateBestGivers(liteClient: LiteClient, myAddress: Address) {
 
         return false;
       });
+
+  if (!whitelistGivers.length) whitelistGivers = givers;
 
   await Promise.all(
     whitelistGivers.map(async (giver) => {
