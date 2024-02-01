@@ -162,7 +162,7 @@ async function updateBestGivers(liteClient: LiteClient, myAddress: Address) {
 
   bestGiver =
     giversWithCoinsPerHash.length > 0
-      ? giversWithCoinsPerHash[2]
+      ? giversWithCoinsPerHash[0]
       : { address: "", coins: 0 };
 }
 
