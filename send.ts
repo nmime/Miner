@@ -249,7 +249,7 @@ async function main() {
 
       console.log(`${new Date()}:     mined`, seed, i++);
 
-      const queryId = opened.generateQueryId(60);
+      const queryId = opened.generateQueryId(crypto.randomInt(900));
       for (let j = 0; j < 5; j++) {
         try {
           await opened.sendTransfer({
@@ -259,7 +259,7 @@ async function main() {
               [
                 internal({
                   to: bestGiver.address,
-                  value: toNano("0.05"),
+                  value: toNano("0.03"),
                   bounce: true,
                   body: Cell.fromBoc(mined)[0].asSlice().loadRef(),
                 }),
@@ -269,7 +269,7 @@ async function main() {
           });
           break;
         } catch (e) {
-          //
+          console.error("error sending", e);
         }
       }
     }
