@@ -1,3 +1,4 @@
+import { HighloadWalletV2 } from "@scaleton/highload-wallet";
 import {
   Address,
   Cell,
@@ -46,7 +47,7 @@ const totalDiff = BigInt(
 );
 
 const givers = [
-  /*{ address: "EQDSGvoktoIRTL6fBEK_ysS8YvLoq3cqW2TxB_xHviL33ex2", reward: 1000 },
+  { address: "EQDSGvoktoIRTL6fBEK_ysS8YvLoq3cqW2TxB_xHviL33ex2", reward: 1000 },
   { address: "EQCvMmHhSYStEtUAEDrpV39T2GWl-0K-iqCxSSZ7I96L4yow", reward: 1000 },
   { address: "EQBvumwjKe7xlrjc22p2eLGT4UkdRnrmqmcEYT94J6ZCINmt", reward: 1000 },
   { address: "EQDEume45yzDIdSy_Cdz7KIKZk0HyCFIr0yKdbtMyPfFUkbl", reward: 1000 },
@@ -55,9 +56,9 @@ const givers = [
   { address: "EQCba5q9VoYGgiGykVazOUZ49UK-1RljUeZgU6E-bW0bqF2Z", reward: 1000 },
   { address: "EQCzT8Pk1Z_aMpNukdV-Mqwc6LNaCNDt-HD6PiaSuEeCD0hV", reward: 1000 },
   { address: "EQDglg3hI89dySlr-FR_d1GQCMirkLZH6TPF-NeojP-DbSgY", reward: 1000 },
-  { address: "EQDIDs45shbXRwhnXoFZg303PkG2CihbVvQXw1k0_yVIqxcA", reward: 1000 },*/ // 1000
+  { address: "EQDIDs45shbXRwhnXoFZg303PkG2CihbVvQXw1k0_yVIqxcA", reward: 1000 }, // 1000
 
-  {
+  /*{
     address: "EQDcOxqaWgEhN_j6Tc4iIQNCj2dBf9AFm0S9QyouwifYo9KD",
     reward: 10000,
   },
@@ -80,7 +81,7 @@ const givers = [
   {
     address: "EQD_71XLqY8nVSf4i5pqGsCjz6EUo2kQEEQq0LUAgg6AHolO",
     reward: 10000,
-  },
+  },*/
 ];
 
 async function retryAsyncOperation(operation, maxRetries = 1000, delay = 500) {
@@ -174,11 +175,9 @@ async function main() {
     "https://ton-blockchain.github.io/global.config.json"
   );
 
-  const wallet = WalletContractV4.create({
-    workchain: 0,
-    publicKey: keyPair.publicKey,
-  });
+  const wallet = new HighloadWalletV2(keyPair.publicKey);
   const opened = liteClient.open(wallet);
+
   console.log(wallet.address, "chooseen wallet");
 
   await updateBestGivers(liteClient, wallet.address);
@@ -212,9 +211,9 @@ async function main() {
     const path = `bocs/${randomName}`;
     const command = `/root/Miner/pow-miner-cuda -g 0 -F 16 -t 5 ${process.env.MAIN} ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
     try {
-      const output = execSync(command, { encoding: "utf-8", stdio: "pipe" }); // the default is 'buffer'
+      const output = execSync(command, { encoding: "utf-8", stdio: "pipe" });
     } catch (e) {
-      // console.error(e);
+      //console.error(e);
     }
     let mined: Buffer | undefined = undefined;
     try {
@@ -250,37 +249,26 @@ async function main() {
 
       console.log(`${new Date()}:     mined`, seed, i++);
 
-      let seqno = 0;
-      try {
-        seqno = await opened.getSeqno();
-      } catch (e) {
-        //
-      }
+      const queryId = opened.generateQueryId(60);
       for (let j = 0; j < 5; j++) {
         try {
-          opened
-            .sendTransfer({
-              seqno,
-              secretKey: keyPair.secretKey,
-              messages: [
+          await opened.sendTransfer({
+            queryId: queryId,
+            secretKey: keyPair.secretKey,
+            messages: [
+              [
                 internal({
-                  to: giverAddress,
+                  to: bestGiver.address,
                   value: toNano("0.05"),
                   bounce: true,
                   body: Cell.fromBoc(mined)[0].asSlice().loadRef(),
                 }),
+                3 as any,
               ],
-              sendMode: 3 as any,
-            })
-            .catch((e) => {
-              console.log("send transaction error", e);
-              //
-            });
+            ],
+          });
           break;
         } catch (e) {
-          if (j === 4) {
-            throw e;
-          }
           //
         }
       }
