@@ -1,32 +1,54 @@
 import {
   Address,
-  Cell,
-  TupleReader,
-  internal,
-  parseTuple,
-  toNano,
   BitReader,
   BitString,
+  Cell,
+  TupleReader,
+  beginCell,
+  external,
+  internal,
+  parseTuple,
+  storeMessage,
+  toNano,
 } from "@ton/core";
 import {
+  KeyPair,
   getSecureRandomBytes,
   keyPairFromSeed,
   mnemonicToWalletKey,
 } from "@ton/crypto";
-import axios from "axios";
+import { TonClient4 } from "@ton/ton";
 import {
-  LiteClient,
-  LiteRoundRobinEngine,
-  LiteSingleEngine,
-} from "ton-lite-client";
-import { execSync } from "child_process";
+  execSync,
+  exec as exec_callback,
+  spawn,
+  ChildProcess,
+} from "child_process";
 import fs from "fs";
 import { WalletContractV4 } from "@ton/ton";
 import dotenv from "dotenv";
+import { givers1000 } from "./givers";
+import {
+  LiteClient,
+  LiteSingleEngine,
+  LiteRoundRobinEngine,
+} from "ton-lite-client";
+import { getLiteClient } from "./client";
+import { OpenedContract } from "@ton/core";
+import { promisify } from "util";
 import crypto from "crypto";
+
+const exec = promisify(exec_callback);
 
 dotenv.config();
 dotenv.config({ path: "config.txt" });
+
+type ApiObj = LiteClient;
+
+let givers = givers1000;
+const bin = "/root/Miner/pow-miner-cuda";
+let gpus = 1;
+const timeout = 5;
 
 const mySeeds: string[] = [];
 let counter = 0;
@@ -41,326 +63,315 @@ while (true) {
 }
 const mySeed = mySeeds[crypto.randomInt(mySeeds.length)];
 
-const totalDiff = BigInt(
-  "115792089237277217110272752943501742914102634520085823245724998868298727686144"
-);
-
-const givers = [
-  /*{ address: "EQDSGvoktoIRTL6fBEK_ysS8YvLoq3cqW2TxB_xHviL33ex2", reward: 1000 },
-  { address: "EQCvMmHhSYStEtUAEDrpV39T2GWl-0K-iqCxSSZ7I96L4yow", reward: 1000 },
-  { address: "EQBvumwjKe7xlrjc22p2eLGT4UkdRnrmqmcEYT94J6ZCINmt", reward: 1000 },
-  { address: "EQDEume45yzDIdSy_Cdz7KIKZk0HyCFIr0yKdbtMyPfFUkbl", reward: 1000 },
-  { address: "EQAO7jXcX-fJJZl-kphbpdhbIDUqcAiYcAr9RvVlFl38Uatt", reward: 1000 },
-  { address: "EQAvheS_G-U57CE55UlwF-3M-cc4cljbLireYCmAMe_RHWGF", reward: 1000 },
-  { address: "EQCba5q9VoYGgiGykVazOUZ49UK-1RljUeZgU6E-bW0bqF2Z", reward: 1000 },
-  { address: "EQCzT8Pk1Z_aMpNukdV-Mqwc6LNaCNDt-HD6PiaSuEeCD0hV", reward: 1000 },
-  { address: "EQDglg3hI89dySlr-FR_d1GQCMirkLZH6TPF-NeojP-DbSgY", reward: 1000 },
-  { address: "EQDIDs45shbXRwhnXoFZg303PkG2CihbVvQXw1k0_yVIqxcA", reward: 1000 },*/ // 1000
-
-  {
-    address: "EQDcOxqaWgEhN_j6Tc4iIQNCj2dBf9AFm0S9QyouwifYo9KD",
-    reward: 10000,
-  },
-  {
-    address: "EQAjYs4-QKve9gtwC_HrKNR0Eaqhze4sKUmRhRYeensX8iu3",
-    reward: 10000,
-  },
-  {
-    address: "EQBGhm8bNil8tw4Z2Ekk4sKD-vV-LCz7BW_qIYCEjZpiMF6Q",
-    reward: 10000,
-  },
-  {
-    address: "EQCtrloCD9BHbVT7q8aXkh-JtL_ZDvtJ5Y-eF2ahg1Ru1EUl",
-    reward: 10000,
-  },
-  {
-    address: "EQCWMIUBrpwl7OeyEQsOF9-ZMKCQ7fh3_UOvM2N5y77u8uPc",
-    reward: 10000,
-  },
-  {
-    address: "EQD_71XLqY8nVSf4i5pqGsCjz6EUo2kQEEQq0LUAgg6AHolO",
-    reward: 10000,
-  },
-];
-
-async function retryAsyncOperation(operation, maxRetries = 1000, delay = 500) {
-  let attempts = 0;
-  while (attempts < maxRetries) {
-    try {
-      return await operation();
-    } catch (error) {
-      attempts++;
-      if (attempts >= maxRetries) {
-        throw error;
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
+const envAddress = process.env.MAIN;
+let TARGET_ADDRESS: string | undefined = undefined;
+if (envAddress) {
+  try {
+    TARGET_ADDRESS = Address.parse(envAddress).toString({
+      urlSafe: true,
+      bounceable: false,
+    });
+  } catch (e) {
+    console.log("Couldnt parse target address");
+    process.exit(1);
   }
 }
 
-let lc: LiteClient | undefined = undefined;
-let createLiteClient: Promise<void>;
-
 let bestGiver: { address: string; coins: number } = { address: "", coins: 0 };
-async function updateBestGivers(liteClient: LiteClient, myAddress: Address) {
-  const lastInfo = await retryAsyncOperation(() =>
-    liteClient.getMasterchainInfo()
+async function updateBestGivers(liteClient: ApiObj, myAddress: Address) {
+  const giver = givers[Math.floor(Math.random() * givers.length)];
+  bestGiver = {
+    address: giver.address,
+    coins: giver.reward,
+  };
+}
+
+async function getPowInfo(
+  liteClient: ApiObj,
+  address: Address
+): Promise<[bigint, bigint, bigint]> {
+  const lastInfo = await liteClient.getMasterchainInfo();
+  const powInfo = await liteClient.runMethod(
+    address,
+    "get_pow_params",
+    Buffer.from([]),
+    lastInfo.last
   );
+  const powStack = Cell.fromBase64(powInfo.result as string);
+  const stack = parseTuple(powStack);
 
-  let giversWithCoinsPerHash: { address: string; coins: number }[] = [];
+  const reader = new TupleReader(stack);
+  const seed = reader.readBigNumber();
+  const complexity = reader.readBigNumber();
+  const iterations = reader.readBigNumber();
 
-  const allowShards = false;
-
-  let whitelistGivers = allowShards
-    ? [...givers]
-    : givers.filter((giver) => {
-        const shardMaxDepth = 1;
-        const giverAddress = Address.parse(giver.address);
-        const myShard = new BitReader(
-          new BitString(myAddress.hash, 0, 1024)
-        ).loadUint(shardMaxDepth);
-        const giverShard = new BitReader(
-          new BitString(giverAddress.hash, 0, 1024)
-        ).loadUint(shardMaxDepth);
-
-        if (myShard === giverShard) {
-          return true;
-        }
-
-        return false;
-      });
-
-  if (!whitelistGivers.length) whitelistGivers = givers;
-
-  await Promise.all(
-    whitelistGivers.map(async (giver) => {
-      const powInfo = await liteClient.runMethod(
-        Address.parse(giver.address),
-        "get_pow_params",
-        Buffer.from([]),
-        lastInfo.last
-      );
-      const powStack = Cell.fromBase64(powInfo.result as string);
-      const stack = parseTuple(powStack);
-
-      const reader = new TupleReader(stack);
-      const seed = reader.readBigNumber();
-      const complexity = reader.readBigNumber();
-      const iterations = reader.readBigNumber();
-
-      const hashes = totalDiff / complexity;
-      const coinsPerHash = giver.reward / Number(hashes);
-
-      giversWithCoinsPerHash.push({
-        address: giver.address,
-        coins: coinsPerHash,
-      });
-    })
-  );
-
-  giversWithCoinsPerHash.sort((a, b) => b.coins - a.coins);
-
-  bestGiver =
-    giversWithCoinsPerHash.length > 0
-      ? giversWithCoinsPerHash[0]
-      : { address: "", coins: 0 };
+  return [seed, complexity, iterations];
 }
 
 let go = true;
 let i = 0;
-async function main() {
-  const keyPair = await mnemonicToWalletKey(mySeed.split(" "));
-  const liteClient = await getLiteClient(
-    "https://ton-blockchain.github.io/global.config.json"
-  );
+let success = 0;
+let lastMinedSeed: bigint = BigInt(0);
+let start = Date.now();
 
+async function main() {
+  gpus = await detectNvidiaGPUCount();
+
+  const minerOk = await testMiner(gpus);
+  if (!minerOk) {
+    console.log("Your miner is not working");
+
+    process.exit(1);
+  }
+
+  let liteClient: ApiObj = await getLiteClient();
+
+  const keyPair = await mnemonicToWalletKey(mySeed.split(" "));
   const wallet = WalletContractV4.create({
     workchain: 0,
     publicKey: keyPair.publicKey,
   });
-  const opened = liteClient.open(wallet);
-  console.log(wallet.address, "chooseen wallet");
+  console.log(
+    "Using v4r2 wallet",
+    wallet.address.toString({ bounceable: false, urlSafe: true })
+  );
 
-  await updateBestGivers(liteClient, wallet.address);
+  const targetAddress =
+    TARGET_ADDRESS ??
+    wallet.address.toString({ bounceable: false, urlSafe: true });
+  console.log("Target address:", targetAddress);
+  console.log("Date, time, status, seed, attempts, successes, timespent");
+
+  try {
+    await updateBestGivers(liteClient, wallet.address);
+  } catch (e) {
+    console.log("error", e);
+    throw Error("no givers");
+  }
 
   setInterval(() => {
     updateBestGivers(liteClient, wallet.address);
-  }, 1000);
+  }, 5000);
 
   while (go) {
     const giverAddress = bestGiver.address;
-    const lastInfo = await retryAsyncOperation(() =>
-      liteClient.getMasterchainInfo()
+    const [seed, complexity, iterations] = await getPowInfo(
+      liteClient,
+      Address.parse(giverAddress)
     );
-    const powInfo = await retryAsyncOperation(() =>
-      liteClient.runMethod(
-        Address.parse(giverAddress),
-        "get_pow_params",
-        Buffer.from([]),
-        lastInfo.last
-      )
+    if (seed === lastMinedSeed) {
+      updateBestGivers(liteClient, wallet.address);
+      await delay(200);
+      continue;
+    }
+
+    const promises: any[] = [];
+
+    let handlers: ChildProcess[] = [];
+
+    const mined: Buffer | undefined = await new Promise(
+      async (resolve, reject) => {
+        let rest = gpus;
+        for (let i = 0; i < gpus; i++) {
+          const randomName =
+            (await getSecureRandomBytes(8)).toString("hex") + ".boc";
+          const path = `bocs/${randomName}`;
+          const command = `-g ${i} -F 128 -t ${timeout} ${targetAddress} ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
+
+          const procid = spawn(bin, command.split(" "), { stdio: "pipe" });
+
+          // procid.on('message', (m) => {
+          //     console.log('message', m)
+          // })
+
+          // procid.stdout.on('data', (data) => {
+          //     console.log(`stdout: ${data}`);
+          // })
+          // procid.stderr.on('data', (data) => {
+          //     console.log(`err: ${data}`);
+          // })
+          handlers.push(procid);
+
+          procid.on("exit", () => {
+            let mined: Buffer | undefined = undefined;
+            try {
+              const exists = fs.existsSync(path);
+              if (exists) {
+                mined = fs.readFileSync(path);
+                resolve(mined);
+                lastMinedSeed = seed;
+                fs.rmSync(path);
+                for (const handle of handlers) {
+                  handle.kill("SIGINT");
+                }
+              }
+            } catch (e) {
+              console.log("not mined", e);
+            } finally {
+              if (--rest === 0) {
+                resolve(undefined);
+              }
+            }
+          });
+        }
+      }
     );
-    const powStack = Cell.fromBase64(powInfo.result as string);
-    const stack = parseTuple(powStack);
 
-    const reader = new TupleReader(stack);
-    const seed = reader.readBigNumber();
-    const complexity = reader.readBigNumber();
-    const iterations = reader.readBigNumber();
-
-    const randomName = (await getSecureRandomBytes(8)).toString("hex") + ".boc";
-    const path = `bocs/${randomName}`;
-    const command = `/root/Miner/pow-miner-cuda -g 0 -F 16 -t 5 ${process.env.MAIN} ${seed} ${complexity} ${iterations} ${giverAddress} ${path}`;
-    try {
-      const output = execSync(command, { encoding: "utf-8", stdio: "pipe" }); // the default is 'buffer'
-    } catch (e) {
-      // console.error(e);
-    }
-    let mined: Buffer | undefined = undefined;
-    try {
-      mined = fs.readFileSync(path);
-      fs.rmSync(path);
-    } catch (e) {
-      //
-    }
     if (!mined) {
-      console.log(`${new Date()}: not mined`, seed, i++);
+      console.log(
+        `${formatTime()}: not mined`,
+        seed.toString(16).slice(0, 4),
+        i++,
+        success,
+        Math.floor((Date.now() - start) / 1000)
+      );
     }
-    if (mined) {
-      const lastInfo = await retryAsyncOperation(() =>
-        liteClient.getMasterchainInfo()
-      );
-      const powInfo = await retryAsyncOperation(() =>
-        liteClient.runMethod(
-          Address.parse(giverAddress),
-          "get_pow_params",
-          Buffer.from([]),
-          lastInfo.last
-        )
-      );
-      const powStack = Cell.fromBase64(powInfo.result as string);
-      const stack = parseTuple(powStack);
 
-      const reader = new TupleReader(stack);
-      const newSeed = reader.readBigNumber();
+    if (mined) {
+      const [newSeed] = await getPowInfo(
+        liteClient,
+        Address.parse(giverAddress)
+      );
       if (newSeed !== seed) {
         console.log("Mined already too late seed");
         continue;
       }
 
-      console.log(`${new Date()}:     mined`, seed, i++);
-
+      console.log(
+        `${formatTime()}:     mined`,
+        seed.toString(16).slice(0, 4),
+        i++,
+        ++success,
+        Math.floor((Date.now() - start) / 1000)
+      );
       let seqno = 0;
+
+      let w = liteClient.open(wallet);
       try {
-        seqno = await opened.getSeqno();
-      } catch (e) {
-        //
-      }
-      for (let j = 0; j < 5; j++) {
-        try {
-          opened
-            .sendTransfer({
-              seqno,
-              secretKey: keyPair.secretKey,
-              messages: [
-                internal({
-                  to: giverAddress,
-                  value: toNano("0.05"),
-                  bounce: true,
-                  body: Cell.fromBoc(mined)[0].asSlice().loadRef(),
-                }),
-              ],
-              sendMode: 3 as any,
-            })
-            .catch((e) => {
-              console.log("send transaction error", e);
-              //
-            });
-          break;
-        } catch (e) {
-          if (j === 4) {
-            throw e;
-          }
-          //
-        }
-      }
+        seqno = await CallForSuccess(() => w.getSeqno());
+      } catch (e) {}
+
+      await sendMinedBoc(
+        wallet,
+        seqno,
+        keyPair,
+        giverAddress,
+        Cell.fromBoc(mined)[0].asSlice().loadRef()
+      );
     }
   }
 }
 main();
 
-export function intToIP(int: number) {
-  const part1 = int & 255;
-  const part2 = (int >> 8) & 255;
-  const part3 = (int >> 16) & 255;
-  const part4 = (int >> 24) & 255;
+async function sendMinedBoc(
+  wallet: WalletContractV4,
+  seqno: number,
+  keyPair: KeyPair,
+  giverAddress: string,
+  boc: Cell
+) {
+  const wallets: OpenedContract<WalletContractV4>[] = [];
 
-  return `${part4}.${part3}.${part2}.${part1}`;
-}
+  const liteServerClient = await getLiteClient();
+  const w1 = liteServerClient.open(wallet);
+  wallets.push(w1);
 
-export async function getLiteClient(_configUrl): Promise<LiteClient> {
-  if (lc) {
-    return lc;
-  }
-
-  if (!createLiteClient) {
-    createLiteClient = (async () => {
-      const liteServers = [
-        {
-          ip: 1608101903,
-          port: 30230,
-          id: {
-            "@type": "pub.ed25519",
-            key: "eGx3ACkKhiRkMMH5asaHbCVh+oqVVgciAdfMeh4eddo=",
-          },
-        },
-        {
-          ip: -2018154536,
-          port: 49286,
-          id: {
-            "@type": "pub.ed25519",
-            key: "nszgJvk0RTtMC/OufD0oXJ8RDOf4sdinWR/e/HMglws=",
-          },
-        },
-        {
-          ip: -2018117415,
-          port: 52406,
-          id: {
-            "@type": "pub.ed25519",
-            key: "x6GRYuBfj0wJGjadRMkmu58zTy1XKbhdZAuVPt87o6A=",
-          },
-        },
-        {
-          ip: 1608105239,
-          port: 51174,
-          id: {
-            "@type": "pub.ed25519",
-            key: "Op0xDElg9QL9mg4MD9NzHbFCB/m/9lIlGhVbVuoby9Y=",
-          },
-        },
-      ]; //data.liteservers;
-      const engines: any[] = [];
-
-      for (const server of liteServers) {
-        const ls = server;
-        engines.push(
-          new LiteSingleEngine({
-            host: `tcp://${intToIP(ls.ip)}:${ls.port}`,
-            publicKey: Buffer.from(ls.id.key, "base64"),
-          })
-        );
-      }
-
-      const engine = new LiteRoundRobinEngine(engines);
-      const lc2 = new LiteClient({
-        engine,
-        batchSize: 1,
+  for (let i = 0; i < 3; i++) {
+    for (const w of wallets) {
+      w.sendTransfer({
+        seqno,
+        secretKey: keyPair.secretKey,
+        messages: [
+          internal({
+            to: giverAddress,
+            value: toNano("0.05"),
+            bounce: true,
+            body: boc,
+          }),
+        ],
+        sendMode: 3 as any,
+      }).catch((e) => {
+        //
       });
-      lc = lc2;
-    })();
+    }
+  }
+}
+
+async function testMiner(gpus: number): Promise<boolean> {
+  for (let i = 0; i < gpus; i++) {
+    const gpu = i;
+    const randomName = (await getSecureRandomBytes(8)).toString("hex") + ".boc";
+    const path = `bocs/${randomName}`;
+    const command = `${bin} -g ${gpu} -F 128 -t ${timeout} kQBWkNKqzCAwA9vjMwRmg7aY75Rf8lByPA9zKXoqGkHi8SM7 229760179690128740373110445116482216837 53919893334301279589334030174039261347274288845081144962207220498400000000000 10000000000 kQBWkNKqzCAwA9vjMwRmg7aY75Rf8lByPA9zKXoqGkHi8SM7 ${path}`;
+    try {
+      execSync(command, { encoding: "utf-8", stdio: "pipe" });
+    } catch (e) {}
+    let mined: Buffer | undefined = undefined;
+    try {
+      mined = fs.readFileSync(path);
+      fs.rmSync(path);
+    } catch (e) {}
+    if (!mined) {
+      return false;
+    }
   }
 
-  await createLiteClient;
-
-  return lc as any;
+  return true;
 }
+
+export async function CallForSuccess<T extends (...args: any[]) => any>(
+  toCall: T,
+  attempts = 100,
+  delayMs = 200
+): Promise<ReturnType<T>> {
+  if (typeof toCall !== "function") {
+    throw new Error("unknown input");
+  }
+
+  let i = 0;
+  let lastError: unknown;
+
+  while (i < attempts) {
+    try {
+      const res = await toCall();
+      return res;
+    } catch (err) {
+      lastError = err;
+      i++;
+      await delay(delayMs);
+    }
+  }
+
+  console.log("error after attempts", i);
+  throw lastError;
+}
+
+export function delay(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function formatTime() {
+  return new Date().toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "numeric",
+    minute: "numeric",
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    second: "numeric",
+  });
+}
+
+const detectNvidiaGPUCount = async () => {
+  try {
+    const { stdout } = await exec("nvidia-smi -L");
+    const gpuCount = (stdout.match(/GPU \d+:/g) || []).length;
+    console.log(`Number of NVIDIA GPUs detected: ${gpuCount}`);
+    return gpuCount;
+  } catch (error) {
+    console.error(`exec nvidia error: ${error}`);
+    return 1;
+  }
+};
