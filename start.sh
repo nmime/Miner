@@ -15,11 +15,11 @@ nvm install node
 
 git clone $REPO_URL
 REPO_NAME=$(basename $REPO_URL .git)
-git pull
 
 chmod +x /root/Miner/pow-miner-cuda
 
 cd $REPO_NAME
+git pull
 
 echo "$CONFIG_CONTENT" > config.txt
 

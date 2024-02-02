@@ -108,6 +108,18 @@ async function getPowInfo(
   return [seed, complexity, iterations];
 }
 
+const detectNvidiaGPUCount = async () => {
+  try {
+    const { stdout } = await exec("nvidia-smi -L");
+    const gpuCount = (stdout.match(/GPU \d+:/g) || []).length;
+    console.log(`Number of NVIDIA GPUs detected: ${gpuCount}`);
+    return gpuCount;
+  } catch (error) {
+    console.error(`exec nvidia error: ${error}`);
+    return 1;
+  }
+};
+
 let go = true;
 let i = 0;
 let success = 0;
@@ -363,15 +375,3 @@ function formatTime() {
     second: "numeric",
   });
 }
-
-const detectNvidiaGPUCount = async () => {
-  try {
-    const { stdout } = await exec("nvidia-smi -L");
-    const gpuCount = (stdout.match(/GPU \d+:/g) || []).length;
-    console.log(`Number of NVIDIA GPUs detected: ${gpuCount}`);
-    return gpuCount;
-  } catch (error) {
-    console.error(`exec nvidia error: ${error}`);
-    return 1;
-  }
-};
