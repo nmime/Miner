@@ -59,6 +59,14 @@ export async function getLiteClient(): Promise<LiteClient> {
             key: "Op0xDElg9QL9mg4MD9NzHbFCB/m/9lIlGhVbVuoby9Y=",
           },
         },
+        {
+          ip: 94489629,
+          port: 6774,
+          id: {
+            "@type": "pub.ed25519",
+            key: "PAp8f+OjJdhiovOvAgLtpjdzqvX7dxvIZx23MwIfSWw=",
+          },
+        },
       ];
       const engines: any[] = [];
 
