@@ -44,22 +44,6 @@ export async function getLiteClient(): Promise<LiteClient> {
           },
         },
         {
-          ip: -2018117415,
-          port: 52406,
-          id: {
-            "@type": "pub.ed25519",
-            key: "x6GRYuBfj0wJGjadRMkmu58zTy1XKbhdZAuVPt87o6A=",
-          },
-        },
-        {
-          ip: 1608105239,
-          port: 51174,
-          id: {
-            "@type": "pub.ed25519",
-            key: "Op0xDElg9QL9mg4MD9NzHbFCB/m/9lIlGhVbVuoby9Y=",
-          },
-        },
-        {
           ip: 94489629,
           port: 6774,
           id: {
