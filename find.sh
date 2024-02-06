@@ -35,13 +35,6 @@ process_query() {
 REPO_URL="https://github.com/nmime/Miner"
 
 CONFIG_CONTENT=$(cat <<'END_HEREDOC'
-SEED=address equal calm saddle pause pig travel various fade filter human document raccoon camp tongue print lawsuit body art between adapt try outside always
-SEED1=sweet area lawn rapid uncle office caught royal blossom fiscal business fame gas combine bubble destroy tumble field loop vocal argue hedgehog forest more
-SEED2=main switch step access piece lumber bulb memory rude vibrant donate rail skate drastic olympic clever audit hazard mass autumn busy lecture program lady
-SEED3=design pumpkin regular citizen retire west suggest cake wave gesture amount fiction symptom pitch wool ripple intact save thrive submit essence crater mammal advance
-SEED4=surface desk crunch enhance useless main lesson laundry eternal begin scorpion harvest tiny loud shaft luggage unfair renew member warrior uncover question jacket grocery
-SEED5=athlete glory climb stumble vacuum library humble metal blanket rent bargain olive blue vast wine reveal more orchard pencil ancient regular acid knee manage
-MAIN=EQA3m5hVR9-Wt8tjZl1SVVlOKXhp4NM0O78qzzz45HusF93x
 END_HEREDOC
 )
 
