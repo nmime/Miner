@@ -28,14 +28,6 @@ export async function getLiteClient(): Promise<LiteClient> {
     createLiteClient = (async () => {
       const liteServers = [
         {
-          ip: 1608101903,
-          port: 30230,
-          id: {
-            "@type": "pub.ed25519",
-            key: "eGx3ACkKhiRkMMH5asaHbCVh+oqVVgciAdfMeh4eddo=",
-          },
-        },
-        {
           ip: -2018154536,
           port: 49286,
           id: {

@@ -192,16 +192,6 @@ async function main() {
 
           const procid = spawn(bin, command.split(" "), { stdio: "pipe" });
 
-          // procid.on('message', (m) => {
-          //     console.log('message', m)
-          // })
-
-          // procid.stdout.on('data', (data) => {
-          //     console.log(`stdout: ${data}`);
-          // })
-          // procid.stderr.on('data', (data) => {
-          //     console.log(`err: ${data}`);
-          // })
           handlers.push(procid);
 
           procid.on("exit", () => {
